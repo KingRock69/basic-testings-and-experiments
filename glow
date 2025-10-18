@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="transparent">
+  <title>PM2.5 Dots Inward (Glow)</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent !important;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: transparent !important;
+    }
+  </style>
+</head>
+<body>
+<canvas id="dotCanvas"></canvas>
+<script>
+  const canvas = document.getElementById("dotCanvas");
+  const ctx = canvas.getContext("2d", { alpha: true });
+
+  function resizeCanvas() {
+    canvas.width = canvas.clientWidth || window.innerWidth;
+    canvas.height = canvas.clientHeight || window.innerHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const pm25 = parseFloat(urlParams.get("pm25")) || 20;
+
+  function getDotColor(pm) {
+    if (pm <= 35) return "0,255,200";   // teal
+    if (pm <= 75) return "255,188,82";  // yellow-orange
+    if (pm <= 150) return "253,139,71"; // orange-red
+    return "254,51,55";                 // red
+  }
+
+  const dotRGB = getDotColor(pm25);
+  const dots = [];
+
+  function createDot() {
+    const startX = Math.random() * canvas.width;
+    const startY = Math.random() * canvas.height;
+    const dx = (canvas.width / 2 - startX) / 300;
+    const dy = (canvas.height / 2 - startY) / 300;
+    return {
+      x: startX,
+      y: startY,
+      dx,
+      dy,
+      r: Math.random() * 6 + 2,
+      life: 0,
+      maxLife: Math.random() * 200 + 200
+    };
+  }
+
+  for (let i = 0; i < 50; i++) dots.push(createDot());
+
+  function updateDots() {
+    for (let i = 0; i < dots.length; i++) {
+      const dot = dots[i];
+      dot.life++;
+      dot.x += dot.dx;
+      dot.y += dot.dy;
+      if (dot.life >= dot.maxLife) dots[i] = createDot();
+    }
+  }
+
+  function drawDots() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = "lighter"; // additive blending for glow
+
+    for (const dot of dots) {
+      const opacity = 1 - dot.life / dot.maxLife;
+      const scale = 1 - dot.life / dot.maxLife;
+
+      // glow effect
+      ctx.shadowColor = `rgba(${dotRGB},${opacity * 0.6})`;
+      ctx.shadowBlur = 20;
+
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(${dotRGB},${opacity * 0.8})`;
+      ctx.arc(dot.x, dot.y, dot.r * scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  function animate() {
+    updateDots();
+    drawDots();
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+</body>
+</html>
