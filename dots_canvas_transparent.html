@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="color-scheme" content="dark light">
   <meta name="theme-color" content="transparent">
-  <title>PM2.5 Dots Inward (Transparent)</title>
+  <title>PM2.5 Dots Inward (Glow)</title>
   <style>
     html, body {
       margin: 0;
@@ -18,7 +18,7 @@
       display: block;
       width: 100%;
       height: 100%;
-      background: transparent !important; /* ensures no white layer */
+      background: transparent !important;
     }
   </style>
 </head>
@@ -26,14 +26,12 @@
 <canvas id="dotCanvas"></canvas>
 <script>
   const canvas = document.getElementById("dotCanvas");
-  // ✅ Create a transparent drawing buffer
   const ctx = canvas.getContext("2d", { alpha: true });
 
-  // Force full size on load
   function resizeCanvas() {
     canvas.width = canvas.clientWidth || window.innerWidth;
     canvas.height = canvas.clientHeight || window.innerHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // ensure no residual white
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
   window.addEventListener("resize", resizeCanvas);
@@ -42,15 +40,20 @@
   const urlParams = new URLSearchParams(window.location.search);
   const pm25 = parseFloat(urlParams.get("pm25")) || 20;
 
+  // 🔹 Color depending on PM2.5 level
   function getDotColor(pm) {
-    if (pm <= 35) return "rgba(0, 255, 200, 0.75)";
-    if (pm <= 75) return "rgba(255, 188, 82, 0.75)";
-    if (pm <= 150) return "rgba(253, 139, 71, 0.75)";
-    return "rgba(254, 51, 55, 0.75)";
+    if (pm <= 35) return "rgba(0, 255, 200, 0.75)";     // Good
+    if (pm <= 75) return "rgba(255, 188, 82, 0.75)";     // Moderate
+    if (pm <= 150) return "rgba(253, 139, 71, 0.75)";    // Poor
+    return "rgba(254, 51, 55, 0.75)";                    // Polluted
   }
 
   const dotColor = getDotColor(pm25);
   const dots = [];
+
+  // 🔸 Convert the color to RGB for the aura
+  const colorMatch = dotColor.match(/rgba?\((\d+), *(\d+), *(\d+)/);
+  const dotRGB = colorMatch ? `${colorMatch[1]},${colorMatch[2]},${colorMatch[3]}` : "255,255,255";
 
   function createDot() {
     const startX = Math.random() * canvas.width;
@@ -75,6 +78,18 @@
     dots.push(createDot());
   }
 
+  // 🔆 Draw the soft central glow
+  function drawBackgroundGlow() {
+    const gradient = ctx.createRadialGradient(
+      canvas.width / 2, canvas.height / 2, 0,
+      canvas.width / 2, canvas.height / 2, canvas.width / 2.5
+    );
+    gradient.addColorStop(0, `rgba(${dotRGB}, 0.25)`);
+    gradient.addColorStop(1, `rgba(${dotRGB}, 0)`);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
   function updateDots() {
     for (let i = 0; i < dots.length; i++) {
       const dot = dots[i];
@@ -92,6 +107,9 @@
 
   function drawDots() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBackgroundGlow(); // add aura
+    ctx.globalCompositeOperation = "lighter"; // smooth blending
+
     for (const dot of dots) {
       ctx.beginPath();
       ctx.globalAlpha = dot.opacity;
@@ -99,7 +117,9 @@
       ctx.arc(dot.x, dot.y, dot.r * dot.scale, 0, Math.PI * 2);
       ctx.fill();
     }
+
     ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
   }
 
   function animate() {
